@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel - Pixel Battle</title>
+</head>
+<body>
+  <h1>Admin Panel - Pixel Battle</h1>
+  <h2>Статистика команд</h2>
+  <div id="stats"></div>
+  <h2>История установки пикселей</h2>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>vk_user_id</th>
+        <th>Команда</th>
+        <th>X</th>
+        <th>Y</th>
+        <th>Цвет</th>
+        <th>Время (локальное)</th>
+      </tr>
+    </thead>
+    <tbody id="pixelHistory"></tbody>
+  </table>
+  <script>
+    function loadStats() {
+      fetch("/api/team_stats")
+        .then(res => res.json())
+        .then(data => {
+          let html = "<ul>";
+          data.forEach(item => {
+            html += `<li>${item.team}: ${item.pixel_count} пикселей</li>`;
+          });
+          html += "</ul>";
+          document.getElementById("stats").innerHTML = html;
+        });
+    }
+    function loadHistory() {
+      fetch("/api/admin_pixels")
+        .then(res => res.json())
+        .then(data => {
+          let html = "";
+          data.forEach(p => {
+            const date = new Date(p.placed_at * 1000).toLocaleString();
+            html += `<tr>
+              <td>${p.id}</td>
+              <td>${p.vk_user_id}</td>
+              <td>${p.team}</td>
+              <td>${p.x}</td>
+              <td>${p.y}</td>
+              <td>${p.color}</td>
+              <td>${date}</td>
+            </tr>`;
+          });
+          document.getElementById("pixelHistory").innerHTML = html;
+        });
+    }
+    loadStats();
+    loadHistory();
+    // Обновляем данные каждую минуту
+    setInterval(() => {
+      loadStats();
+      loadHistory();
+    }, 60000);
+  </script>
+</body>
+</html>

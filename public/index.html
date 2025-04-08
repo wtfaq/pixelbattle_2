@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Pixel Battle</title>
+  <style>
+    canvas {
+      border: 1px solid black;
+      /* Для приближения можно использовать CSS transform или специальные библиотеки */
+    }
+    #colorPicker button {
+      margin: 5px;
+      width: 30px;
+      height: 30px;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Pixel Battle</h1>
+  
+  <!-- Блок выбора команды (виден, если пользователь ещё не зарегистрирован) -->
+  <div id="teamSelection" style="display:none;">
+    <p>Выберите свою команду:</p>
+    <button data-team="red" style="background:red;"></button>
+    <button data-team="blue" style="background:blue;"></button>
+    <button data-team="green" style="background:green;"></button>
+    <button data-team="yellow" style="background:yellow;"></button>
+    <button data-team="purple" style="background:purple;"></button>
+    <button data-team="orange" style="background:orange;"></button>
+    <button data-team="cyan" style="background:cyan;"></button>
+    <button data-team="magenta" style="background:magenta;"></button>
+  </div>
+  
+  <!-- Игровой экран -->
+  <div id="game" style="display:none;">
+    <div id="colorPicker">
+      <button data-color="red" style="background:red;"></button>
+      <button data-color="blue" style="background:blue;"></button>
+      <button data-color="green" style="background:green;"></button>
+      <button data-color="yellow" style="background:yellow;"></button>
+      <button data-color="purple" style="background:purple;"></button>
+      <button data-color="orange" style="background:orange;"></button>
+      <button data-color="cyan" style="background:cyan;"></button>
+      <button data-color="magenta" style="background:magenta;"></button>
+    </div>
+    <canvas id="gameCanvas" width="3000" height="3000"></canvas>
+  </div>
+
+  <script>
+    // Определяем vk_user_id. На самом деле его должен передавать ВКонтакте через параметры приложения.
+    const urlParams = new URLSearchParams(window.location.search);
+    let vk_user_id = urlParams.get("vk_user_id");
+    if (!vk_user_id) {
+      vk_user_id = prompt("Введите ваш vk_user_id:");
+    }
+    
+    let selectedColor = "red";
+
+    // При загрузке проверяем, зарегистрирован ли уже пользователь (выбрал ли он команду)
+    fetch(`/api/get_user?vk_user_id=` + vk_user_id)
+      .then(res => {
+        if (res.status === 200) return res.json();
+        else throw new Error("User not registered");
+      })
+      .then(data => {
+        initGame(data.team);
+      })
+      .catch(err => {
+        // Если пользователь не найден, показываем панель выбора команды
+        document.getElementById("teamSelection").style.display = "block";
+      });
+
+    // Обработка выбора команды
+    document.querySelectorAll("#teamSelection button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const team = btn.getAttribute("data-team");
+        fetch("/api/select_team", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vk_user_id, team })
+        })
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById("teamSelection").style.display = "none";
+            initGame(data.team);
+          });
+      });
+    });
+
+    function initGame(team) {
+      document.getElementById("game").style.display = "block";
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      // Выбор цвета для размещения пикселя
+      document.querySelectorAll("#colorPicker button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectedColor = btn.getAttribute("data-color");
+        });
+      });
+
+      // При клике по canvas вычисляем координаты с учётом возможного масштабирования
+      canvas.addEventListener("click", function(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = 300 / rect.width;
+        const scaleY = 300 / rect.height;
+        const x = Math.floor((event.clientX - rect.left) * (300 / rect.width));
+        const y = Math.floor((event.clientY - rect.top) * (300 / rect.height));
+        // Отправляем запрос на размещение пикселя
+        fetch("/api/place_pixel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vk_user_id, x, y, color: selectedColor })
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.error) alert(data.error);
+          });
+      });
+
+      // Устанавливаем WebSocket-соединение для получения обновлений в реальном времени
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${protocol}://${window.location.host}`);
+      ws.onmessage = function(event) {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "new_pixel") {
+          const p = msg.data;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(p.x*10, p.y*10, 10, 10);
+        } else if (msg.type === "widget_update") {
+          // Можно обновить статистику на клиенте, если это необходимо
+          console.log("Widget update:", msg.data);
+        }
+      };
+
+      // Загружаем ранее установленные пиксели для первичной отрисовки
+      fetch("/api/get_pixels?vk_user_id=" + vk_user_id)
+        .then(res => res.json())
+        .then(pixels => {
+          pixels.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x*10, p.y*10, 10, 10);
+          });
+        });
+    }
+  // http://localhost:3000/index.html?vk_user_id=YOUR_VK_USER_ID
+  </script>
+  
+</body>
+</html>
