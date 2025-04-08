@@ -17,7 +17,7 @@ bot.on("callback_query", function (query) {
         bot.answerCallbackQuery(query.id, "Sorry, '" + query.game_short_name + "' is not available.");
     } else {
         queries[query.id] = query;
-        let gameurl = "https://github.com/wtfaq/pixelbattle_2/blob/main/Bot_API.js";
+        let gameurl = "https://github.com/wtfaq/pixelbattle_2/blob/main/public/index/";
         bot.answerCallbackQuery({
             callback_query_id: query.id,
             url: gameurl
