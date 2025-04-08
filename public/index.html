@@ -51,48 +51,6 @@
     <canvas id="gameCanvas" width="3000" height="3000"></canvas>
   </div>
 
-  <div>
-    <script src="https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js"></script>
-    <script type="text/javascript">
-      if ('VKIDSDK' in window) {
-        const VKID = window.VKIDSDK;
-  
-        VKID.Config.init({
-          app: 53364729,
-          redirectUrl: 'https://x3hces-91-237-148-26.ru.tuna.am',
-          responseMode: VKID.ConfigResponseMode.Callback,
-          source: VKID.ConfigSource.LOWCODE,
-          scope: '', // Заполните нужными доступами по необходимости
-        });
-  
-        const floatingOneTap = new VKID.FloatingOneTap();
-  
-        floatingOneTap.render({
-          appName: 'PixelBattle',
-          showAlternativeLogin: true
-        })
-        .on(VKID.WidgetEvents.ERROR, vkidOnError)
-        .on(VKID.FloatingOneTapInternalEvents.LOGIN_SUCCESS, function (payload) {
-          const code = payload.code;
-          const deviceId = payload.device_id;
-  
-          VKID.Auth.exchangeCode(code, deviceId)
-            .then(vkidOnSuccess)
-            .catch(vkidOnError);
-        });
-      
-        function vkidOnSuccess(data) {
-          floatingOneTap.close();
-          
-          // Обработка полученного результата
-        }
-      
-        function vkidOnError(error) {
-          // Обработка ошибки
-        }
-      }
-    </script>
-  </div>
   <script>
     // Определяем vk_user_id. На самом деле его должен передавать ВКонтакте через параметры приложения.
     const urlParams = new URLSearchParams(window.location.search);
